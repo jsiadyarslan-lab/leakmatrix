@@ -57,7 +57,14 @@ def basic_header(client_id, secret):
 
 def main():
     client_id = sys.argv[1].strip() if len(sys.argv) > 1 else CLIENT_ID_DEFAULT
+    # وسيط ثانٍ اختياري: اسم لاحقة لملفات التوكن حتى لا يُطمس توكن حساب بآخر
+    # مثال: python allegro_device.py <client_id> victim  → allegro_token_victim.txt
+    suffix = sys.argv[2].strip() if len(sys.argv) > 2 else ""
+    token_file = "allegro_token%s.txt" % (("_" + suffix) if suffix else "")
+    refresh_file = "allegro_refresh%s.txt" % (("_" + suffix) if suffix else "")
     print("=== LeakMatrix | Allegro Sandbox — Device Flow ===")
+    if suffix:
+        print("وضع اللاحقة: %s — سيُحفظ التوكن في %s (لن يُطمس توكن الحساب الآخر)" % (suffix, token_file))
     print("Client ID: %s" % client_id)
     # التوثيق الرسمي: طلب رمز الجهاز يستوجب ترويسة Authorization: Basic
     # بترميز base64(client_id:client_secret). السر يُقرأ تفاعليًا فقط:
@@ -150,15 +157,15 @@ def main():
         if not token:
             print("رد غير متوقع: %s" % t)
             sys.exit(1)
-        with open("allegro_token.txt", "w", encoding="utf-8") as f:
+        with open(token_file, "w", encoding="utf-8") as f:
             f.write("Bearer " + token + "\n")
         if t.get("refresh_token"):
-            with open("allegro_refresh.txt", "w", encoding="utf-8") as f:
+            with open(refresh_file, "w", encoding="utf-8") as f:
                 f.write(t["refresh_token"] + "\n")
         print("")
-        print("نجح التوكن! حُفظ في allegro_token.txt (وبالمناسبة: لا تشارك هذا الملف مع أحد)")
+        print("نجح التوكن! حُفظ في %s (لا تشارك هذا الملف مع أحد)" % token_file)
         if t.get("refresh_token"):
-            print("refresh_token حُفظ أيضًا في allegro_refresh.txt")
+            print("refresh_token حُفظ أيضًا في %s" % refresh_file)
         break
     else:
         print("انتهت المهلة دون موافقة — شغّل السكربت من جديد.")
