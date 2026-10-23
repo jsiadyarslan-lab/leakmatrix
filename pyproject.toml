@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "leakmatrix"
+version = "0.2.0"
+description = "Continuous cross-tenant authorization testing from any OpenAPI/Swagger spec. Finds IDOR/BOLA leaks before attackers do."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "Jaber + Z.ai" }]
+keywords = ["security", "idor", "bola", "authorization", "owasp", "ci"]
+dependencies = ["requests>=2.25"]
+
+[project.optional-dependencies]
+yaml = ["pyyaml>=5.4"]
+
+[project.urls]
+Homepage = "https://github.com/jaber55/leakmatrix"
+
+[project.scripts]
+leakmatrix = "leakmatrix.cli:main"
