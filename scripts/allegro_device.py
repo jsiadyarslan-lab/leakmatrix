@@ -14,6 +14,8 @@ allegro_device.py — OAuth Device Flow لأليغرو ساندبوكس
   4) يختبر GET /me فورًا (الخطوة 3 من قائمة بوابة أليغرو)
 لا يحتاج أي مكتبات خارجية — بايثون القياسي فقط.
 """
+import base64
+import getpass
 import json
 import sys
 import time
@@ -27,7 +29,7 @@ try:
 except Exception:
     pass
 
-CLIENT_ID = "111627973"
+CLIENT_ID_DEFAULT = "111627973"
 UA = "jaber-55/1.0 (+https://github.com/jsiadyarslan-lab/leakmatrix)"
 BASE = "https://allegro.pl.allegrosandbox.pl"
 DEVICE = BASE + "/auth/oauth/device"
@@ -35,38 +37,40 @@ TOKEN = BASE + "/auth/oauth/token"
 ME = "https://api.allegro.pl.allegrosandbox.pl/me"
 
 
-def post_form(url, data):
-    req = Request(
-        url,
-        data=urlencode(data).encode("utf-8"),
-        headers={
-            "User-Agent": UA,
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Accept": "application/json",
-        },
-        method="POST",
-    )
+def post_form(url, data, auth=None):
+    headers = {
+        "User-Agent": UA,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json",
+    }
+    if auth:
+        headers["Authorization"] = auth
+    req = Request(url, data=urlencode(data).encode("utf-8"), headers=headers, method="POST")
     with urlopen(req, timeout=30) as r:
         return json.loads(r.read().decode("utf-8"))
 
 
+def basic_header(client_id, secret):
+    raw = "%s:%s" % (client_id, secret)
+    return "Basic " + base64.b64encode(raw.encode("utf-8")).decode("ascii")
+
+
 def main():
+    client_id = sys.argv[1].strip() if len(sys.argv) > 1 else CLIENT_ID_DEFAULT
     print("=== LeakMatrix | Allegro Sandbox — Device Flow ===")
+    print("Client ID: %s" % client_id)
+    # التوثيق الرسمي: طلب رمز الجهاز يستوجب ترويسة Authorization: Basic
+    # بترميز base64(client_id:client_secret). السر يُقرأ تفاعليًا فقط:
+    # لا يُحفظ في ملف، ولا يُرسل لأي طرف، ولا يظهر على الشاشة.
+    secret = getpass.getpass("الصق client_secret ثم Enter (لن يظهر أثناء الكتابة): ").strip()
+    if not secret:
+        print("client_secret مطلوب — موجود في صفحة تطبيقك في البوابة")
+        sys.exit(1)
+    auth = basic_header(client_id, secret)
+
     print("[1/3] طلب رمز الجهاز من:", DEVICE)
-    # ملاحظة: التوثيق الرسمي يضع client_id في رابط الاستعلام (query) وليس في الجسم
     try:
-        req = Request(
-            DEVICE + "?client_id=" + CLIENT_ID,
-            data=b"",
-            headers={
-                "User-Agent": UA,
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Accept": "application/json",
-            },
-            method="POST",
-        )
-        with urlopen(req, timeout=30) as r:
-            d = json.loads(r.read().decode("utf-8"))
+        d = post_form(DEVICE, {"client_id": client_id}, auth=auth)
     except HTTPError as e:
         body = ""
         try:
@@ -79,10 +83,11 @@ def main():
         www = e.headers.get("WWW-Authenticate") if e.headers else None
         if www:
             print("ترويسة WWW-Authenticate: %s" % www)
-        print("تلميحات إن تكرر 401:")
-        print("  1) تأكد من نوع التطبيق في البوابة: يجب أن يكون")
-        print("     'Application without browser access' (بدون متصفح) ليقبل Device Flow")
-        print("  2) تأكد أن client_id صحيح (الرقم المعروض في صفحة تطبيقك)")
+        print("تلميحات إن تكرر الرفض:")
+        print("  1) تحقق من client_secret: انسخه من صفحة تطبيقك من جديد")
+        print("  2) نوع التطبيق يجب أن يكون 'بدون متصفح/لوحة مفاتيح' ليقبل Device Flow")
+        print("     (التوثيق: لا يمكن تغيير النوع بعد التسجيل — أنشئ تطبيقًا جديدًا")
+        print("     بالنوع الصحيح ثم شغّل: python scripts\\allegro_device.py <client_id_الجديد>)")
         print("  3) جرّب لاحقًا أو من شبكة الهاتف (Hotspot) إن ظهرت صفحة JS بدل الخطأ")
         sys.exit(1)
     except (URLError, json.JSONDecodeError) as e:
@@ -116,8 +121,9 @@ def main():
                 {
                     "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
                     "device_code": d["device_code"],
-                    "client_id": CLIENT_ID,
+                    "client_id": client_id,
                 },
+                auth=auth,
             )
         except HTTPError as e:
             try:
