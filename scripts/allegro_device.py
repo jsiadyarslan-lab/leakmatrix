@@ -53,8 +53,20 @@ def post_form(url, data):
 def main():
     print("=== LeakMatrix | Allegro Sandbox — Device Flow ===")
     print("[1/3] طلب رمز الجهاز من:", DEVICE)
+    # ملاحظة: التوثيق الرسمي يضع client_id في رابط الاستعلام (query) وليس في الجسم
     try:
-        d = post_form(DEVICE, {"client_id": CLIENT_ID})
+        req = Request(
+            DEVICE + "?client_id=" + CLIENT_ID,
+            data=b"",
+            headers={
+                "User-Agent": UA,
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json",
+            },
+            method="POST",
+        )
+        with urlopen(req, timeout=30) as r:
+            d = json.loads(r.read().decode("utf-8"))
     except HTTPError as e:
         body = ""
         try:
@@ -64,7 +76,14 @@ def main():
         print("فشل HTTP %s" % e.code)
         if body:
             print("الرد: %s" % body)
-        print("تلميح: إن تكرر، جرّب من شبكة الهاتف (Hotspot) بنافذة خاصة — DataDome قد يعترض.")
+        www = e.headers.get("WWW-Authenticate") if e.headers else None
+        if www:
+            print("ترويسة WWW-Authenticate: %s" % www)
+        print("تلميحات إن تكرر 401:")
+        print("  1) تأكد من نوع التطبيق في البوابة: يجب أن يكون")
+        print("     'Application without browser access' (بدون متصفح) ليقبل Device Flow")
+        print("  2) تأكد أن client_id صحيح (الرقم المعروض في صفحة تطبيقك)")
+        print("  3) جرّب لاحقًا أو من شبكة الهاتف (Hotspot) إن ظهرت صفحة JS بدل الخطأ")
         sys.exit(1)
     except (URLError, json.JSONDecodeError) as e:
         print("الرد ليس JSON (تحويل لصفحة دخول أو حماية DataDome): %s" % e)
