@@ -8,7 +8,8 @@ from .spec import load_spec, base_url_of, iter_operations
 from .ids import candidate_ids_from_token, parse_cli_ids
 from .matrix import build_cases
 from .runner import Runner
-from .classifier import classify, refine_with_control, Verdict
+from .classifier import classify, refine_with_control, Verdict, RACE_LEAK
+from .secrets import scan_for_secrets
 from .report import print_summary, to_json
 
 
@@ -41,6 +42,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="polite retries on 429/502/503/504 honoring Retry-After (default 2)")
     r.add_argument("--strict", action="store_true",
                    help="exit 1 also when only SUSPECT findings exist (CI paranoia)")
+    r.add_argument("--race", type=int, default=0, metavar="N",
+                   help="cross-session race probes (OpenAI/redis-py lesson): "
+                        "N concurrent junk-id requests on up to 5 endpoints; 0=off")
     r.add_argument("--timeout", type=int, default=15)
     r.add_argument("--user-agent", default=None,
                    help="override default User-Agent")
@@ -115,11 +119,33 @@ def main(argv=None) -> int:
             if new_klass == "STATIC":
                 evidence = "same body for random GUID (endpoint ignores id)"
             klass = new_klass
+        secrets_found = scan_for_secrets(resp.body) if 200 <= resp.status < 300 else []
         verdicts.append(Verdict(case_label=case.operation, url=case.url,
                                 status=resp.status, klass=klass,
-                                evidence=evidence, elapsed_ms=resp.elapsed_ms))
+                                evidence=evidence, elapsed_ms=resp.elapsed_ms,
+                                secrets=len(secrets_found),
+                                secret_kinds=",".join(sorted({s.kind for s in secrets_found}))))
         tried = f" (after {resp.attempts} tries)" if resp.attempts > 1 else ""
         print(f"  [{i}/{len(cases)}] {case.operation} -> {resp.status} {klass}{tried}")
+
+    # Cross-session race probing — opt-in, bounded (OpenAI/redis-py lesson)
+    if args.race:
+        sample = cases[:5]
+        print(f"\n[*] race probes: {len(sample)} endpoint(s) x {args.race} "
+              f"concurrent junk-id requests (attacker token only)")
+        for case in sample:
+            for resp in runner.race_probe(case, args.race):
+                klass = classify(resp.status, resp.body, victim_ids)
+                if klass == "LEAK":
+                    klass = RACE_LEAK  # victim data WITHOUT aiming at their id
+                secrets_found = scan_for_secrets(resp.body) if 200 <= resp.status < 300 else []
+                verdicts.append(Verdict(case_label=case.operation + " [race]",
+                                        url=case.url, status=resp.status,
+                                        klass=klass, evidence="concurrent burst",
+                                        elapsed_ms=resp.elapsed_ms,
+                                        secrets=len(secrets_found),
+                                        secret_kinds=",".join(sorted({s.kind for s in secrets_found}))))
+            print(f"  [race] {case.operation} -> {args.race} copies sent")
 
     print_summary(verdicts)
 
@@ -128,7 +154,7 @@ def main(argv=None) -> int:
             fh.write(to_json(verdicts))
         print(f"[*] JSON report written: {args.json_out}")
 
-    failed = any(v.klass == "LEAK" for v in verdicts)
+    failed = any(v.klass in ("LEAK", RACE_LEAK) for v in verdicts)
     if args.strict:
         failed = failed or any(v.klass == "SUSPECT" for v in verdicts)
     return 1 if failed else 0

@@ -11,6 +11,8 @@ STATIC = "STATIC"        # same answer for random GUID -> endpoint ignores id
 BLOCKED = "BLOCKED"      # 401/403
 NOT_FOUND = "NOT_FOUND"
 ERROR = "ERROR"          # 5xx / network
+RACE_LEAK = "RACE_LEAK"  # victim data appeared in a concurrent junk-id request
+                         # (cross-session bleed — OpenAI/redis-py lesson)
 OTHER = "OTHER"
 
 
@@ -22,6 +24,8 @@ class Verdict:
     klass: str
     evidence: str = ""
     elapsed_ms: int = 0
+    secrets: int = 0          # credential-like strings found in the body
+    secret_kinds: str = ""    # redacted summary, e.g. "github_token,jwt"
 
 
 def classify(status: int, body: str, victim_ids: Dict[str, str],

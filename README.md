@@ -54,12 +54,13 @@ leakmatrix run \
 
 | Class     | Meaning                                                      |
 |-----------|--------------------------------------------------------------|
-| `LEAK`    | 2xx **and** a victim identifier appears in the body          |
-| `SUSPECT` | 2xx with a large body — needs human eyes                     |
-| `STATIC`  | same body for a random GUID — endpoint ignores the id (safe) |
-| `BLOCKED` | 401/403 — properly rejected                                  |
-| `NOT_FOUND` | 404 — masked or absent                                     |
-| `ERROR`   | 5xx / network                                                |
+| `LEAK`      | 2xx **and** a victim identifier appears in the body          |
+| `RACE_LEAK` | victim data in a concurrent junk-id request (session bleed)  |
+| `SUSPECT`   | 2xx with a large body — needs human eyes                     |
+| `STATIC`    | same body for a random GUID — endpoint ignores the id (safe) |
+| `BLOCKED`   | 401/403 — properly rejected                                  |
+| `NOT_FOUND` | 404 — masked or absent                                       |
+| `ERROR`     | 5xx / network                                                |
 
 Short victim ids (e.g. numeric `1`) are only matched inside JSON value
 context — a body merely *containing* the digit `1` is not a leak.
@@ -71,6 +72,24 @@ context — a body merely *containing* the digit `1` is not a leak.
 7. **429 is expected, not an error**: the runner backs off (honoring
    `Retry-After`), retries politely, and reports the final verdict with the
    number of attempts used.
+
+## Built from real incidents (the 0.3.0 layer)
+
+Two public incidents shaped the newest modules — reproduced ethically here:
+
+- **OpenAI ChatGPT outage (Mar 2023, redis-py race)**: under concurrency, a
+  reused backend connection returned one user's cached data to another —
+  *no id manipulation at all*. → `--race N` fires N concurrent junk-id
+  requests with only YOUR credential; if victim data ever appears, that is
+  documented cross-session bleed (`RACE_LEAK`).
+- **Hugging Face Spaces (May 2023)**: unauthorized access to platform
+  secrets; the response included token rotation and secret scanning.
+  → every 2xx body is scanned for credential formats (GitHub/AWS/Slack/
+  Google keys, JWTs, private-key blocks). Findings are redacted and the
+  verdict is flagged `CREDENTIAL MATERIAL — treat as Critical`.
+
+Secret scanning is always on; race probing is opt-in and bounded (5
+endpoints, ≤8 workers) because it is the one place strict pacing bends.
 
 ## Self-test demo
 
@@ -97,6 +116,19 @@ python3 -m leakmatrix run \
 Expected: retry lines, then `1 LEAK (after 3 tries)`, exit code `1`.
 This spec uses `$ref` + path-item-level parameters, so it also proves the
 spec parser handles them.
+
+### Race + secret self-test (the incident layer)
+
+```bash
+python3 scripts/test_race_secret.py 25 &  # mock with a session-reuse race
+python3 -m leakmatrix run \
+  --spec http://127.0.0.1:8794/swagger/v1/swagger.json \
+  --attacker-token "Bearer attacker-token" \
+  --victim-ids customerId=50770148-258e-4a27-ae08-79257ee70b7f \
+  --race 6
+```
+
+Expected: `1 RACE_LEAK` with `CREDENTIAL MATERIAL [github_token]`, exit `1`.
 
 ## Roadmap
 

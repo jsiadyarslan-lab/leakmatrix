@@ -6,8 +6,9 @@ sandbox portal that throttles registration traffic.
 """
 
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, List, Optional
 
 import requests
 
@@ -112,3 +113,27 @@ class Runner:
         for original in case.substitutions.values():
             url_rand = url_rand.replace(original, random_guid())
         return self.request(method, url_rand, case.token)
+
+    def race_probe(self, case: RequestCase, copies: int) -> List[Response]:
+        """Cross-session race probing — the OpenAI/redis-py lesson (Mar 2023).
+
+        That incident leaked one user's data to another WITHOUT any id
+        manipulation: under concurrency, a reused connection returned the
+        previous user's cached data. The ethical reproduction: fire `copies`
+        concurrent requests with junk/random ids and ONLY the attacker
+        credential. If the victim's identifiers ever appear in such an
+        answer, that is documented cross-session bleed.
+
+        Deliberately opt-in and worker-capped: this is the one place strict
+        pacing must bend (bounded burst, no more than 8 workers).
+        """
+        method = case.operation.split(" ", 1)[0]
+        jobs = []
+        for _ in range(max(1, copies)):
+            u = case.url
+            for original in case.substitutions.values():
+                u = u.replace(original, random_guid())
+            jobs.append((method, u, case.token))
+        with ThreadPoolExecutor(max_workers=min(len(jobs), 8)) as pool:
+            futs = [pool.submit(self.request, m, u, t) for m, u, t in jobs]
+            return [f.result() for f in futs]

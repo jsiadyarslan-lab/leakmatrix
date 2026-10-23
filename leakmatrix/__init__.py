@@ -5,4 +5,4 @@ Parses any OpenAPI/Swagger spec, builds a cross-tenant request matrix
 limits, and classifies responses to surface real data leaks.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
