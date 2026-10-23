@@ -9,7 +9,7 @@ description = "Continuous cross-tenant authorization testing from any OpenAPI/Sw
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
-authors = [{ name = "Jaber + Z.ai" }]
+authors = [{ name = "jsiadyarslan-lab" }]
 keywords = ["security", "idor", "bola", "authorization", "owasp", "ci"]
 dependencies = ["requests>=2.25"]
 
@@ -17,7 +17,7 @@ dependencies = ["requests>=2.25"]
 yaml = ["pyyaml>=5.4"]
 
 [project.urls]
-Homepage = "https://github.com/jaber55/leakmatrix"
+Homepage = "https://github.com/jsiadyarslan-lab/leakmatrix"
 
 [project.scripts]
 leakmatrix = "leakmatrix.cli:main"
