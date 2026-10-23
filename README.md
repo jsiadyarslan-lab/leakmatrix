@@ -39,6 +39,20 @@ leakmatrix run \
 - `--strict` — CI mode: exit `1` also when only `SUSPECT` findings exist.
 - `--json report.json` — machine report; CI should treat exit code `1` as FAIL.
 
+## Web Console (GUI, local)
+
+Prefer clicking over the CLI? The repo ships an Arabic RTL web console that
+drives the same engine from your browser — 100% local, no cloud:
+
+```bash
+cd console
+npm install
+npm run dev      # → http://localhost:3000
+```
+
+Live streaming log, verdict cards, JSON/CSV export, and a built-in safe mock
+target for your first 30-second run. See [console/README.md](console/README.md).
+
 ## What it does
 
 1. Loads any Swagger 2 / OpenAPI 3 spec — JSON, or YAML when PyYAML is
