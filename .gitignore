@@ -9,3 +9,7 @@ venv/
 report.json
 *.report.json
 .DS_Store
+allegro_*
+/leakmatrix_v2_alpha.py
+leakmatrix_v2_alpha_evidence.json
+leakmatrix_evidence_negative_test.json
